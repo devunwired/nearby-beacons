@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">NearbyBeacons</string>
+    <string name="text_background_check">Enable Background Scanning</string>
+</resources>
