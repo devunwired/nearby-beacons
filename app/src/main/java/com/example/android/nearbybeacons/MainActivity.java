@@ -100,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements
             Nearby.Messages.unsubscribe(
                     mGoogleApiClient,
                     mMessageListener);
+            mAdapter.clear();
 
             mGoogleApiClient.disconnect();
         }
