@@ -33,6 +33,7 @@ public class BeaconService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "Background Scanning Service Created…");
         mNotificationManager =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
@@ -41,12 +42,23 @@ public class BeaconService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null) {
+        if (intent == null) return START_NOT_STICKY;
+
+        if (!ACTION_DISMISS.equals(intent.getAction())) {
             //Convert the incoming intent into a message
             Nearby.Messages.handleIntent(intent, mMessageListener);
+        } else {
+            mNotificationManager.cancel(NOTIFICATION_ID);
+            stopSelf();
         }
 
         return START_NOT_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "Background Scanning Service Destroyed…");
     }
 
     @Override
@@ -61,7 +73,7 @@ public class BeaconService extends Service {
         contentAction.setAction(ACTION_DISMISS);
         PendingIntent content = PendingIntent.getActivity(this, -1, contentAction, 0);
 
-        Intent deleteAction = new Intent(this, EddystoneScannerService.class);
+        Intent deleteAction = new Intent(this, BeaconService.class);
         deleteAction.setAction(ACTION_DISMISS);
         PendingIntent delete = PendingIntent.getService(this, -1, deleteAction, 0);
 

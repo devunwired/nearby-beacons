@@ -14,8 +14,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -31,7 +29,6 @@ import com.google.android.gms.nearby.messages.SubscribeOptions;
 
 public class MainActivity extends AppCompatActivity implements
         AdapterView.OnItemClickListener,
-        CompoundButton.OnCheckedChangeListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
     private static final String TAG =
@@ -55,11 +52,6 @@ public class MainActivity extends AppCompatActivity implements
         list.setAdapter(mAdapter);
         list.setOnItemClickListener(this);
 
-        CheckBox checkBox = (CheckBox) findViewById(R.id.background_check);
-        //TODO: Figure out how to track this status
-//        checkBox.setChecked(EddystoneScannerService.isRunning());
-        checkBox.setOnCheckedChangeListener(this);
-
         //Construct a connection to Play Services
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -71,7 +63,8 @@ public class MainActivity extends AppCompatActivity implements
         if (BeaconService.ACTION_DISMISS.equals(getIntent().getAction())) {
             //Fire a clear action to the service
             Intent intent = new Intent(this, BeaconService.class);
-            stopService(intent);
+            intent.setAction(BeaconService.ACTION_DISMISS);
+            startService(intent);
         }
 
     }
@@ -132,35 +125,6 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        Intent serviceIntent = new Intent(this, BeaconService.class);
-        PendingIntent trigger = PendingIntent.getService(this, 0,
-                serviceIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        if (isChecked) {
-            //Subscribe for background scan updates
-            SubscribeOptions options = new SubscribeOptions.Builder()
-                    .setStrategy(Strategy.BLE_ONLY)
-                    .build();
-            Nearby.Messages.subscribe(mGoogleApiClient, trigger, options)
-                    .setResultCallback(new ResultCallback<Status>() {
-                        @Override
-                        public void onResult(@NonNull Status status) {
-                            //Validate if we were able to register for background scans
-                            if (status.isSuccess()) {
-                                Log.d(TAG, "Success: " + status.getStatusMessage());
-                            } else {
-                                Log.w(TAG, "Register error (" + status.getStatusCode() + "): " + status.getStatusMessage());
-                            }
-                        }
-                    });
-        } else {
-            //Detach background scanning callbacks
-            Nearby.Messages.unsubscribe(mGoogleApiClient, trigger);
-        }
-    }
-
-    @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         OfferBeacon item = mAdapter.getItem(position);
         showToast(item.offer);
@@ -169,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements
     /* Nearby Messages Callbacks */
 
     //NOTE: These callbacks are NOT triggered on the main thread!
-    MessageListener mMessageListener = new MessageListener() {
+    private MessageListener mMessageListener = new MessageListener() {
         // Called each time a new message is discovered nearby.
         @Override
         public void onFound(Message message) {
@@ -194,6 +158,20 @@ public class MainActivity extends AppCompatActivity implements
                     mAdapter.remove(beacon);
                 }
             });
+        }
+    };
+
+    private ResultCallback<Status> mRegisterCallback = new ResultCallback<Status>() {
+        @Override
+        public void onResult(@NonNull Status status) {
+            //Validate if we were able to register for background scans
+            if (status.isSuccess()) {
+                Log.d(TAG, "Background Register Success!");
+            } else {
+                Log.w(TAG, "Background Register Error ("
+                        + status.getStatusCode() + "): "
+                        + status.getStatusMessage());
+            }
         }
     };
 
@@ -230,8 +208,17 @@ public class MainActivity extends AppCompatActivity implements
         SubscribeOptions options = new SubscribeOptions.Builder()
                 .setStrategy(Strategy.BLE_ONLY)
                 .build();
+        //Active subscription for foreground messages
         Nearby.Messages.subscribe(mGoogleApiClient,
                 mMessageListener, options);
+
+        //Passive subscription for background messages
+        Intent serviceIntent = new Intent(this, BeaconService.class);
+        PendingIntent trigger = PendingIntent.getService(this, 0,
+                serviceIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Nearby.Messages.subscribe(mGoogleApiClient, trigger, options)
+                .setResultCallback(mRegisterCallback);
+
     }
 
     //ResultCallback triggered when to handle Nearby permissions check
