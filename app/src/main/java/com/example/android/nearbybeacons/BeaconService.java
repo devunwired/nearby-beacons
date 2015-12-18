@@ -15,7 +15,10 @@ import com.google.android.gms.nearby.messages.MessageListener;
 import java.util.HashSet;
 
 /**
- *
+ * Service triggered in response to background beacon subscriptions.
+ * Displays a notification to the user to indicate new beacons were
+ * discovered. Tracks the current set of discovered beacons since last
+ * user interaction to show as a count.
  */
 public class BeaconService extends Service {
 
