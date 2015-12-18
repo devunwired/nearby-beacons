@@ -23,11 +23,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * This class is Deprecated!
+ * It is only needed if you are targeting Play Services BEFORE 8.4
+ *
  * Background service to scan for Eddystone beacons and notify the user of
  * proximity. This service exists because Nearby Messages should not (and
  * can not) be run from the background. We will fire up that API once the
  * user decides to engage with the application.
  */
+@Deprecated
 public class EddystoneScannerService extends Service {
     private static final String TAG =
             EddystoneScannerService.class.getSimpleName();

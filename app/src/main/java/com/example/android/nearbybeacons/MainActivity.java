@@ -1,6 +1,7 @@
 package com.example.android.nearbybeacons;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -26,6 +27,7 @@ import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.messages.Message;
 import com.google.android.gms.nearby.messages.MessageListener;
 import com.google.android.gms.nearby.messages.Strategy;
+import com.google.android.gms.nearby.messages.SubscribeOptions;
 
 public class MainActivity extends AppCompatActivity implements
         AdapterView.OnItemClickListener,
@@ -54,7 +56,8 @@ public class MainActivity extends AppCompatActivity implements
         list.setOnItemClickListener(this);
 
         CheckBox checkBox = (CheckBox) findViewById(R.id.background_check);
-        checkBox.setChecked(EddystoneScannerService.isRunning());
+        //TODO: Figure out how to track this status
+//        checkBox.setChecked(EddystoneScannerService.isRunning());
         checkBox.setOnCheckedChangeListener(this);
 
         //Construct a connection to Play Services
@@ -65,13 +68,12 @@ public class MainActivity extends AppCompatActivity implements
                 .build();
 
         //When launching from a notification link
-        if (EddystoneScannerService.isRunning()
-                && EddystoneScannerService.ACTION_DISMISS.equals(getIntent().getAction())) {
+        if (BeaconService.ACTION_DISMISS.equals(getIntent().getAction())) {
             //Fire a clear action to the service
-            Intent intent = new Intent(this, EddystoneScannerService.class);
-            intent.setAction(EddystoneScannerService.ACTION_DISMISS);
-            startService(intent);
+            Intent intent = new Intent(this, BeaconService.class);
+            stopService(intent);
         }
+
     }
 
     @Override
@@ -131,11 +133,30 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        Intent serviceIntent = new Intent(this, EddystoneScannerService.class);
+        Intent serviceIntent = new Intent(this, BeaconService.class);
+        PendingIntent trigger = PendingIntent.getService(this, 0,
+                serviceIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
         if (isChecked) {
-            startService(serviceIntent);
+            //Subscribe for background scan updates
+            SubscribeOptions options = new SubscribeOptions.Builder()
+                    .setStrategy(Strategy.BLE_ONLY)
+                    .build();
+            Nearby.Messages.subscribe(mGoogleApiClient, trigger, options)
+                    .setResultCallback(new ResultCallback<Status>() {
+                        @Override
+                        public void onResult(@NonNull Status status) {
+                            //Validate if we were able to register for background scans
+                            if (status.isSuccess()) {
+                                Log.d(TAG, "Success: " + status.getStatusMessage());
+                            } else {
+                                Log.w(TAG, "Register error (" + status.getStatusCode() + "): " + status.getStatusMessage());
+                            }
+                        }
+                    });
         } else {
-            stopService(serviceIntent);
+            //Detach background scanning callbacks
+            Nearby.Messages.unsubscribe(mGoogleApiClient, trigger);
         }
     }
 
@@ -206,10 +227,11 @@ public class MainActivity extends AppCompatActivity implements
 
     private void subscribe() {
         Log.d(TAG, "Subscribing…");
-        Nearby.Messages.subscribe(
-                mGoogleApiClient,
-                mMessageListener,
-                Strategy.BLE_ONLY);
+        SubscribeOptions options = new SubscribeOptions.Builder()
+                .setStrategy(Strategy.BLE_ONLY)
+                .build();
+        Nearby.Messages.subscribe(mGoogleApiClient,
+                mMessageListener, options);
     }
 
     //ResultCallback triggered when to handle Nearby permissions check

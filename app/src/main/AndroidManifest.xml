@@ -26,8 +26,8 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".EddystoneScannerService"
-            android:exported="false" />
+        <service android:name=".BeaconService"
+            android:exported="true" />
     </application>
 
 </manifest>
