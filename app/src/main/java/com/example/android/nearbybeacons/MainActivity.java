@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements
         if (result != PackageManager.PERMISSION_GRANTED) {
             //Ask for the location permission
             ActivityCompat.requestPermissions(this,
-                    new String[] {Manifest.permission.ACCESS_COARSE_LOCATION},
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                     REQUEST_PERMISSION);
         }
     }
@@ -161,20 +161,6 @@ public class MainActivity extends AppCompatActivity implements
         }
     };
 
-    private ResultCallback<Status> mRegisterCallback = new ResultCallback<Status>() {
-        @Override
-        public void onResult(@NonNull Status status) {
-            //Validate if we were able to register for background scans
-            if (status.isSuccess()) {
-                Log.d(TAG, "Background Register Success!");
-            } else {
-                Log.w(TAG, "Background Register Error ("
-                        + status.getStatusCode() + "): "
-                        + status.getStatusMessage());
-            }
-        }
-    };
-
     /* API Client Callbacks */
 
     @Override
@@ -216,9 +202,25 @@ public class MainActivity extends AppCompatActivity implements
         Intent serviceIntent = new Intent(this, BeaconService.class);
         PendingIntent trigger = PendingIntent.getService(this, 0,
                 serviceIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Nearby.Messages.subscribe(mGoogleApiClient, trigger, options)
-                .setResultCallback(mRegisterCallback);
 
+        ResultCallback<Status> callback = new BackgroundRegisterCallback();
+        Nearby.Messages.subscribe(mGoogleApiClient, trigger, options)
+                .setResultCallback(callback);
+
+    }
+
+    private class BackgroundRegisterCallback implements ResultCallback<Status> {
+        @Override
+        public void onResult(@NonNull Status status) {
+            //Validate if we were able to register for background scans
+            if (status.isSuccess()) {
+                Log.d(TAG, "Background Register Success!");
+            } else {
+                Log.w(TAG, "Background Register Error ("
+                        + status.getStatusCode() + "): "
+                        + status.getStatusMessage());
+            }
+        }
     }
 
     //ResultCallback triggered when to handle Nearby permissions check
