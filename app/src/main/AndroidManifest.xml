@@ -28,6 +28,9 @@
 
         <service android:name=".BeaconService"
             android:exported="true" />
+
+        <service android:name=".BeaconObserverService"
+            android:exported="false" />
     </application>
 
 </manifest>
